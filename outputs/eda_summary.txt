@@ -1,0 +1,22 @@
+Ahadu Bank — Credit Scoring EDA Summary
+============================================================
+Rows: 150,000 | Columns: 12
+Overall default / distress rate (target mean): 6.6840%
+
+Missing values (from raw data, before imputation for plots):
+  MonthlyIncome: 29731 (19.821%)
+  NumberOfDependents: 3924 (2.616%)
+
+Baseline model metrics (hold-out test set, stratified split):
+  logistic_regression:
+    ROC-AUC: 0.8004
+    Accuracy: 0.7726
+  random_forest:
+    ROC-AUC: 0.8590
+    Accuracy: 0.8480
+
+Interpretation tips for your report:
+  - ROC-AUC summarizes ranking quality of predicted risk scores (0.5 = random).
+  - Accuracy can look 'high' when defaults are rare; always pair with AUC + confusion matrix.
+
+Figures saved under outputs/figures/ (PNG).
