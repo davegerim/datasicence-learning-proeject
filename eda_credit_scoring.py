@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy import stats
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -312,6 +313,128 @@ def plot_utilization_vs_default(df: pd.DataFrame) -> None:
     plt.close(fig)
 
 
+def numeric_feature_columns(df: pd.DataFrame) -> list[str]:
+    """Numeric feature list excluding id and target."""
+    return [
+        c
+        for c in df.columns
+        if c not in ("borrower_id", "SeriousDlqin2yrs") and pd.api.types.is_numeric_dtype(df[c])
+    ]
+
+
+def univariate_statistics_report(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build univariate statistics per numeric feature.
+
+    Includes quartiles, skewness, and kurtosis requested in the assignment.
+    """
+    rows = []
+    for col in numeric_feature_columns(df):
+        s = df[col].dropna()
+        q1 = s.quantile(0.25)
+        q2 = s.quantile(0.50)
+        q3 = s.quantile(0.75)
+        rows.append(
+            {
+                "feature": col,
+                "count": int(s.shape[0]),
+                "mean": float(s.mean()),
+                "std": float(s.std(ddof=1)),
+                "min": float(s.min()),
+                "q1": float(q1),
+                "median_q2": float(q2),
+                "q3": float(q3),
+                "max": float(s.max()),
+                "iqr": float(q3 - q1),
+                "skewness": float(s.skew()),
+                "kurtosis_excess": float(s.kurt()),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("feature").reset_index(drop=True)
+
+
+def outlier_iqr_report(df: pd.DataFrame) -> pd.DataFrame:
+    """Detect outliers using 1.5*IQR rule for each numeric feature."""
+    rows = []
+    n = len(df)
+    for col in numeric_feature_columns(df):
+        s = df[col].dropna()
+        q1 = s.quantile(0.25)
+        q3 = s.quantile(0.75)
+        iqr = q3 - q1
+        lo = q1 - 1.5 * iqr
+        hi = q3 + 1.5 * iqr
+        outlier_mask = (s < lo) | (s > hi)
+        outlier_count = int(outlier_mask.sum())
+        rows.append(
+            {
+                "feature": col,
+                "lower_bound": float(lo),
+                "upper_bound": float(hi),
+                "outlier_count": outlier_count,
+                "outlier_pct_of_rows": round(100.0 * outlier_count / n, 4),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("outlier_pct_of_rows", ascending=False).reset_index(
+        drop=True
+    )
+
+
+def hypothesis_testing_report(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Run hypothesis tests between target classes:
+    - Welch's t-test for difference in means per numeric feature.
+    """
+    y0 = df["SeriousDlqin2yrs"] == 0
+    y1 = df["SeriousDlqin2yrs"] == 1
+
+    rows = []
+    for col in numeric_feature_columns(df):
+        s0 = df.loc[y0, col].dropna()
+        s1 = df.loc[y1, col].dropna()
+        t_stat, p_value = stats.ttest_ind(s1, s0, equal_var=False, nan_policy="omit")
+        rows.append(
+            {
+                "feature": col,
+                "mean_target_1": float(s1.mean()),
+                "mean_target_0": float(s0.mean()),
+                "mean_diff_1_minus_0": float(s1.mean() - s0.mean()),
+                "t_statistic": float(t_stat),
+                "p_value": float(p_value),
+                "significant_at_0_05": bool(p_value < 0.05),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("p_value").reset_index(drop=True)
+
+
+def plot_bivariate_relationships(df: pd.DataFrame) -> None:
+    """Bivariate boxplots: key numeric features by target class."""
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    pairs = [
+        ("RevolvingUtilizationOfUnsecuredLines", "Utilization by target"),
+        ("DebtRatio", "Debt ratio by target"),
+        ("MonthlyIncome", "Monthly income by target"),
+        ("NumberOfTimes90DaysLate", "90+ days late count by target"),
+    ]
+    for ax, (col, title) in zip(axes.flat, pairs):
+        plot_df = df[["SeriousDlqin2yrs", col]].copy()
+        plot_df[col] = cap_series_for_plot(plot_df[col], 0.995)
+        sns.boxplot(
+            data=plot_df,
+            x="SeriousDlqin2yrs",
+            y=col,
+            ax=ax,
+            palette="Set2",
+            showfliers=False,
+        )
+        ax.set_title(title)
+        ax.set_xlabel("Target (0=no distress, 1=distress)")
+    plt.suptitle("Bivariate analysis — distributions by target class", y=1.02, fontsize=13)
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / "07_bivariate_boxplots_by_target.png", dpi=150)
+    plt.close(fig)
+
+
 def build_feature_matrix(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     """
     Separate id/target from predictors used in sklearn.
@@ -436,6 +559,9 @@ def write_summary_text(
     df: pd.DataFrame,
     quality: pd.DataFrame,
     model_results: dict,
+    univariate_stats: pd.DataFrame,
+    outlier_stats: pd.DataFrame,
+    hypothesis_stats: pd.DataFrame,
 ) -> None:
     """Plain-text summary file for your written report (copy/paste friendly)."""
     lines = []
@@ -467,7 +593,32 @@ def write_summary_text(
         "  - Accuracy can look 'high' when defaults are rare; always pair with AUC + confusion matrix."
     )
     lines.append("")
+    lines.append("Univariate analysis (with quartiles, skewness, kurtosis):")
+    for _, r in univariate_stats.head(5).iterrows():
+        lines.append(
+            f"  {r['feature']}: Q1={r['q1']:.3f}, Median={r['median_q2']:.3f}, "
+            f"Q3={r['q3']:.3f}, Skew={r['skewness']:.3f}, Kurtosis={r['kurtosis_excess']:.3f}"
+        )
+    lines.append("")
+    lines.append("Outlier detection (IQR method, top 5 by outlier %):")
+    for _, r in outlier_stats.head(5).iterrows():
+        lines.append(
+            f"  {r['feature']}: {int(r['outlier_count'])} outliers "
+            f"({r['outlier_pct_of_rows']:.2f}% of rows)"
+        )
+    lines.append("")
+    lines.append("Hypothesis testing (Welch t-test, top 5 smallest p-values):")
+    for _, r in hypothesis_stats.head(5).iterrows():
+        lines.append(
+            f"  {r['feature']}: p-value={r['p_value']:.3e}, "
+            f"mean_diff(1-0)={r['mean_diff_1_minus_0']:.4f}"
+        )
+    lines.append("")
     lines.append("Figures saved under outputs/figures/ (PNG).")
+    lines.append("Additional tables saved under outputs/:")
+    lines.append("  - univariate_statistics.csv")
+    lines.append("  - outlier_detection_iqr.csv")
+    lines.append("  - hypothesis_testing_results.csv")
 
     out_path = OUTPUT_DIR / "eda_summary.txt"
     out_path.write_text("\n".join(lines), encoding="utf-8")
@@ -495,6 +646,15 @@ def main() -> None:
     plot_key_distributions(df_eda)
     plot_delinquency_risk(df_eda)
     plot_utilization_vs_default(df_eda)
+    plot_bivariate_relationships(df_eda)
+
+    print("Computing univariate, quartile, skewness, kurtosis, outlier, and hypothesis reports...")
+    univariate_stats = univariate_statistics_report(df_eda)
+    univariate_stats.to_csv(OUTPUT_DIR / "univariate_statistics.csv", index=False)
+    outlier_stats = outlier_iqr_report(df_eda)
+    outlier_stats.to_csv(OUTPUT_DIR / "outlier_detection_iqr.csv", index=False)
+    hypothesis_stats = hypothesis_testing_report(df_eda)
+    hypothesis_stats.to_csv(OUTPUT_DIR / "hypothesis_testing_results.csv", index=False)
 
     print("Training baseline models (this may take ~1–2 minutes on a laptop)...")
     X, y = build_feature_matrix(raw)  # use raw + pipeline imputation for modeling
@@ -505,7 +665,14 @@ def main() -> None:
         model_results["random_forest"]["feature_names"],
     )
 
-    write_summary_text(raw, quality, model_results)
+    write_summary_text(
+        raw,
+        quality,
+        model_results,
+        univariate_stats,
+        outlier_stats,
+        hypothesis_stats,
+    )
 
     print("\n--- Model results (test set) ---")
     for name, m in model_results.items():

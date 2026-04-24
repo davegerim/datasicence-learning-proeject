@@ -9,14 +9,51 @@ Missing values (from raw data, before imputation for plots):
 
 Baseline model metrics (hold-out test set, stratified split):
   logistic_regression:
-    ROC-AUC: 0.8004
-    Accuracy: 0.7726
+    ROC-AUC: 0.8472
+    Accuracy: 0.7928
   random_forest:
-    ROC-AUC: 0.8590
-    Accuracy: 0.8480
+    ROC-AUC: 0.8598
+    Accuracy: 0.8530
 
 Interpretation tips for your report:
   - ROC-AUC summarizes ranking quality of predicted risk scores (0.5 = random).
   - Accuracy can look 'high' when defaults are rare; always pair with AUC + confusion matrix.
 
+Univariate analysis (with quartiles, skewness, kurtosis):
+  DebtRatio: Q1=0.175, Median=0.367, Q3=0.868, Skew=95.158, Kurtosis=13734.289
+  MonthlyIncome: Q1=3903.000, Median=5400.000, Q3=7400.000, Skew=127.122, Kurtosis=24261.789
+  NumberOfDependents: Q1=0.000, Median=0.000, Q3=1.000, Skew=1.626, Kurtosis=3.137
+  NumberOfOpenCreditLinesAndLoans: Q1=5.000, Median=8.000, Q3=11.000, Skew=1.215, Kurtosis=3.091
+  NumberOfTime30-59DaysPastDueNotWorse: Q1=0.000, Median=0.000, Q3=0.000, Skew=22.597, Kurtosis=522.377
+
+Outlier detection (IQR method, top 5 by outlier %):
+  DebtRatio: 31311 outliers (20.87% of rows)
+  NumberOfTime30-59DaysPastDueNotWorse: 23982 outliers (15.99% of rows)
+  NumberOfDependents: 13336 outliers (8.89% of rows)
+  MonthlyIncome: 9149 outliers (6.10% of rows)
+  NumberOfTimes90DaysLate: 8338 outliers (5.56% of rows)
+
+Hypothesis testing (Welch t-test, top 5 smallest p-values):
+  age: p-value=0.000e+00, mean_diff(1-0)=-6.8248
+  NumberOfTime30-59DaysPastDueNotWorse: p-value=5.990e-71, mean_diff(1-0)=2.1084
+  NumberOfDependents: p-value=1.866e-61, mean_diff(1-0)=0.2078
+  NumberOfTimes90DaysLate: p-value=3.490e-61, mean_diff(1-0)=1.9561
+  NumberOfTime60-89DaysPastDueNotWorse: p-value=6.065e-47, mean_diff(1-0)=1.7014
+
+Feature engineering (columns added for modeling):
+  - EstimatedMonthlyDebt_to_Income
+  - MonthlyIncome_is_missing
+  - MonthlyIncome_log1p
+  - NumberOfDependents_is_missing
+  - RevolvingUtilization_gt1
+  - RevolvingUtilization_gt2
+  - RevolvingUtilization_log1p
+  - SevereDelinquencyFlag_90plus
+  - TotalDelinquencyEvents_30_60_90
+
 Figures saved under outputs/figures/ (PNG).
+Additional tables saved under outputs/:
+  - univariate_statistics.csv
+  - outlier_detection_iqr.csv
+  - hypothesis_testing_results.csv
+  - feature_engineering.txt (list of engineered column names)
