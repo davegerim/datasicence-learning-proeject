@@ -1,15 +1,213 @@
-# Credit scoring EDA — outputs guide
+# Credit scoring EDA — beginner guide + outputs
 
-Run: `pip install -r requirements.txt` then `python eda_credit_scoring.py`.  
-All paths below are under `outputs/`.
-
-**Dataset:** `cs-training (2).csv` — 150,000 rows; target `SeriousDlqin2yrs` (1 = financial distress in 2 years). **Overall default rate in this file: ~6.68%.**
+**Run:** `pip install -r requirements.txt` then `python eda_credit_scoring.py`.  
+**Data file:** `cs-training (2).csv` (150,000 rows). **Outputs** live under `outputs/`.
 
 ---
 
-## 1. Figures (`outputs/figures/`)
+## Part 1 — What the assignment is asking (the “question”), in plain language
 
-Each image answers a visual question. **What the data shows** (from the same run that produced the tables below) is summarized under each.
+Your teacher gave you a **project brief**. You can read the whole project as answering:
+
+> **“Using past borrower data, how can a bank understand who is more likely to get into serious money trouble soon, and how can that support fairer, smarter lending?”**
+
+Here is what each part of the brief usually means (wording in your PDF may differ; the **ideas** are the same).
+
+### Title and framing (“AI from Zero to Hero”, “Data Science Project”)
+
+- **What it means:** This is a **data science** assignment. You work with **realistic** data, **explore** it, and **draw conclusions**—not only theory on paper.
+
+### “Ahadu Bank”
+
+- **What it means:** The story is set at a **fictional (example) bank** (Ahadu). You write as if you are **helping that bank** make better, evidence-based decisions.
+
+### “Exploratory Data Analysis (EDA)”
+
+- **EDA** = **looking at the data carefully** before (or while) you build models.
+- You check: Is anything **missing**? Do numbers look **weird**? What **patterns** do you see? Which things **go together** with **bad outcomes** (defaults / distress)?
+- **Analogy:** Before a strong diagnosis, a doctor collects **vitals and history**. EDA is like that for your **dataset**.
+
+### “Historical credit dataset … Credit Scoring”
+
+- **Historical** = from the **past** (old loans / old borrowers), not a crystal ball with no data.
+- **Credit scoring** = giving each borrower a **risk score** (how **risky** it is to lend to them, often later turned into a probability of default / distress).
+
+### “Inclusive finance & data-driven lending … Ethiopia”
+
+- **Inclusive finance** = trying to lend in a way that does **not exclude** people **unfairly**, while still **managing risk** (safety and fairness in tension).
+- **Data-driven lending** = decisions that are **supported by data and models**, not only gut feeling.
+- **Ethiopia** = **regional context** in the course story. Your **methods** (plots, models) are universal; the **“why it matters”** is local to the brief.
+
+### “Identifying key risk factors … financial distress within the next two years”
+
+- **Risk factors** = things that show up **more often** among people who later have **trouble paying** (e.g. many past late payments, very high debt compared to income).
+- **Financial distress** in this dataset = the **target** column: **`SeriousDlqin2yrs`**. It is **1** if the borrower had that **bad outcome in the next 2 years**, **0** if not. That is the **outcome the bank worries about** in the brief.
+- So the project question includes: **Which past signals in the data go with that bad outcome?**
+
+### “Insights will inform … high-performing credit scoring model … Model-as-a-Service (MaaS) API”
+
+- **Credit scoring model** = a **rule** (or a learned formula) that turns **borrower features** (age, income, late payments, etc.) into a **score** or **probability** of the bad event.
+- **MaaS (Model-as-a-Service)** = putting that model **behind an API** so other software can send **borrower fields** and get a **score** back (like a small web service). For many EDA projects you **do not** have to build the API unless the teacher requires it; the brief often describes a **long-term product vision** (future bank system).
+
+### Submission date
+
+- **What it means:** The **due date** for the assignment.
+
+---
+
+## Part 2 — The “Dataset” section of the question, explained piece by piece
+
+### “150,000 borrowers (training set)”
+
+- **150,000 rows** ≈ **150,000 borrowers** (in this file, **one row per borrower** after cleaning).
+- **Training set** = the table your **model learns from** in a challenge. In your script we also use a **train / test split** (part of the rows is **hidden** from training) to check performance fairly.
+
+### “Anonymized”
+
+- **What it means:** IDs are **not real private names** in a public file; the data is set up to **protect privacy** (still treat it responsibly).
+
+### Column-by-column (normal words)
+
+| Name in the CSV | Simple meaning |
+|-----------------|----------------|
+| **Unnamed: 0** | Just a **row / borrower ID** column in the file. In code it is renamed to **`borrower_id`**. It is **not** a “credit” signal; we **do not** use it as a model feature. |
+| **SeriousDlqin2yrs** | **Target (label)** = the **thing you want to learn to predict**: **1** = serious delinquency / **financial distress in the next 2 years**, **0** = not. |
+| **RevolvingUtilizationOfUnsecuredLines** | **How “maxed out”** the person is on unsecured revolving credit: **balance ÷ credit limit**. **High** often means stress. **> 1** can mean **over the limit** or data quirks. |
+| **age** | Borrower’s **age in years**. |
+| **NumberOfTime30-59DaysPastDueNotWorse** | **Count** of times they were **30–59 days late** (and “not worse” in that window) in the last **2 years** (mild / early stress). |
+| **DebtRatio** | Roughly **monthly debt payments ÷ monthly gross income**. **High** = heavy **burden** (watch for very large values if income is tiny or missing). |
+| **MonthlyIncome** | **Gross** income **per month**. (This column has a lot of **missing** in the raw file.) |
+| **NumberOfOpenCreditLinesAndLoans** | How many **open** credit lines and loans. |
+| **NumberOfTimes90DaysLate** | **Count** of **90+ days late** — a **strong** “already in trouble” signal. |
+| **NumberRealEstateLoansOrLines** | **Mortgage / home / real-estate** related lines (e.g. housing exposure). |
+| **NumberOfTime60-89DaysPastDueNotWorse** | **Count** of **60–89 days late** episodes (worse than 30–59, not yet 90+ bucket). |
+| **NumberOfDependents** | People who **depend** on the borrower (e.g. children). Can relate to **expenses**. (Has some **missing** in the raw file.) |
+
+**Beginner idea:**
+
+- **Features** = **inputs** to the model (all the columns we use to predict, **except** the row ID and **except** the **target**).
+- **Target** = **output to predict** → **`SeriousDlqin2yrs` (0/1)**.
+
+**Typical run:** **~6.7%** of rows have **target = 1** in this file (class imbalance: many more **0** than **1**).
+
+---
+
+## Part 3 — What the implementation does (simple steps)
+
+### Load the CSV
+
+- The file uses the text **`NA`** for some missing values. The code tells **pandas** to read those as **empty** (NaN) so **math and counts** are correct.
+
+### Rename the ID column
+
+- The first column becomes **`borrower_id`** so plots and reports are **easy to read**.
+
+### Data quality report
+
+- **Saved as** `outputs/data_quality_table.csv`.
+- Counts **missing** data, shows **types**, **n_unique** (how many different values), **min/max** for numbers, etc.  
+- This answers: **“Is the data complete enough to trust, and where are the gaps?”**  
+- In this data, **MonthlyIncome** and **NumberOfDependents** have noticeable **missing %** in the raw file.
+
+### Imputation (only for smooth EDA)
+
+- A copy of the data used for many **plots and tables** fills some missing values (e.g. **median** for income / dependents) so **histograms** and **group comparisons** are not full of empty holes. The **modeling** step uses its **own** median imputation **inside** sklearn (train-safe).
+
+### EDA plots (pictures) — part A
+
+- **01 Target distribution** — how many **0** vs **1** (class imbalance: fewer “bad” cases).
+- **02 Correlation heatmap** — colored grid of **linear (Pearson) links** between numeric fields (not causation, **association**).
+- **03 Histograms** — utilization, age, debt ratio, income (very large values are sometimes **capped** for **display** only so the x-axis is readable).
+- **04 Delinquency vs default rate** — for **counts** of past-due events, the **default rate** (share of 1s) in each count group. Sanity check: **worse history → more distress** in the data.
+- **05 Utilization deciles** — people split into **10** utilization bands; default rate in each band (see **non-linear** risk in higher use).
+
+### EDA and statistics (added for the later assignment topics) — part B
+
+- **Univariate + quartiles + skewness + kurtosis** → `outputs/univariate_statistics.csv` (one row per feature: center, spread, **Q1 / median / Q3**, IQR, skew, excess kurtosis).  
+- **Outlier detection (IQR rule)** → `outputs/outlier_detection_iqr.csv` (fences, counts, % of rows).  
+- **Hypothesis tests (Welch t-test on means, target 1 vs 0)** → `outputs/hypothesis_testing_results.csv`.  
+- **Bivariate** figure → `07_bivariate_boxplots_by_target.png` (boxplots of key **features** by **0/1** target).  
+
+These use **`scipy`** in `requirements.txt` for the **t-test**.
+
+### Baseline models (simple “score like” check)
+
+- The code **splits** rows: about **75%** **train** / **25%** **test** (**stratified** so the share of 1s stays similar in both parts).
+- **Logistic regression** and **random forest** (see glossary).
+- **Reports** **ROC-AUC**, **accuracy**, and prints a **confusion matrix** in the console.
+
+### Feature importance (Random Forest)
+
+- **Saved as** `06_feature_importance_random_forest.png`  
+- A bar chart: which **features** the forest used most in its **splits** (a **storytelling** view, not automatic legal “causality”).
+
+### Summary text
+
+- **Saved as** `outputs/eda_summary.txt`  
+- **Pulls** key **numbers** (N rows, default %, **missing** lines, model **metrics**, a **few** lines from the new tables) so you can paste into a **report**.
+
+---
+
+## Part 4 — Glossary: technical words (general)
+
+### Data & columns
+
+| Term | Meaning |
+|------|--------|
+| **Dataset** | A table: many **rows** (borrowers) and **columns** (variables). |
+| **Feature** | One **input** column used in prediction (age, income, late counts, etc.). **Not** usually the **row ID**. |
+| **Target (label, dependent variable)** | The **thing you predict** → here `SeriousDlqin2yrs` (**0/1**). |
+| **EDA (Exploratory Data Analysis)** | **Exploring** and **visualizing** the data to understand it before you trust strong claims. |
+| **Missing values** | **Empty** cells. In this project, **income** and **dependents** are **often** missing in the raw file. |
+| **Imputation** | **Filling** missing values (here: often **median** for simple EDA continuity; models use imputation **inside** sklearn). In real banks, **policy** matters. |
+| **Outlier** | A value **very far** from most people. Your script can **label** them with the **IQR** rule. **Capping** in some plots = only for **charts**, to see the **main** pattern. |
+
+### Charts
+
+| Term | Meaning |
+|------|--------|
+| **Histogram** | Bars of **how often** values fall in ranges; shows the **shape** of a variable. |
+| **Heatmap (here: correlation heatmap)** | A **colored grid**: each cell is **how two** numeric columns **linearly co-move** (correlation). **Not** the same as **causation**—just **association** in this data. |
+| **Class imbalance** | One **class** of the **target** (e.g. **0**) is **much** more common than the other (**1**). Default is **rare** here, so **accuracy** alone can **mislead**; **ROC-AUC** helps. |
+
+### Modeling
+
+| Term | Meaning |
+|------|--------|
+| **Model** | A learned **mapping** from **features** → **prediction** (class or **probability** of distress). |
+| **Train / test split** | **Train** = learn; **Test** = check on **other** rows (no cheating on the same rows you trained on). |
+| **Stratified split** | Keep roughly the **same** share of **0/1** in **train** and **test** (fairer with rare **1**s). |
+| **Logistic regression** | A **classic 0/1** model. Learns **weights** per feature; **interpretable** baseline. |
+| **Random forest** | **Many** **decision trees** combined; can handle **curved** and **interactive** patterns. Often **stronger AUC**, less **one-line** interpretable. |
+| **Decision tree (idea)** | A chain of **if–else** rules (e.g. *if* late count high *then* higher risk branch). |
+| **Probability output** | A number **0 to 1**: model’s **estimated chance** of the **bad** class. |
+
+### Metrics
+
+| Term | Meaning |
+|------|--------|
+| **Accuracy** | **Fraction** of rows where the predicted class **0/1** matches the truth. Can look “high” when **0s dominate**. |
+| **ROC-AUC** | A **0–1** style score: how well the model **ranks** risky people **above** safe people ( **0.5** ≈ random, **1.0** = perfect **ranking** in ideal data). Common when classes are **imbalanced**. |
+| **Confusion matrix** | **2×2** table: true negatives, false positives, false negatives, true positives — which **kinds of mistakes** happen. |
+| **Feature importance (Random Forest)** | A **rank** of which inputs drove **splits** most. Good for **discussion**; not automatic **regulatory** proof. |
+
+### Glossary: the seven “statistics / EDA” topics (beginner + where in this project)
+
+| Topic | In plain language | In this project |
+|--------|-------------------|-----------------|
+| **Univariate** | You study **one** column at a time (typical value, spread, **shape**). | **`univariate_statistics.csv`** and histograms in **`03_*.png`**. |
+| **Bivariate** | You study **two** things: here **one feature** vs the **target (0/1)**. | **Boxplots** in `07_bivariate_boxplots_by_target.png` and default-rate lines in `04_delinquency_vs_default_rate.png` and `05_utilization_deciles_default_rate.png`. |
+| **Quartiles (Q1, median, Q3)** | If you **sort** all values: **Q1** = 25% are below, **median** = middle, **Q3** = 75% are below. The **IQR = Q3 − Q1** is the “middle 50%” range. | Columns `q1`, `median_q2`, `q3` in **`univariate_statistics.csv`**. |
+| **Skewness** | Tells you if a histogram is **lopsided**. **Large positive** = a **long tail** toward **high** values (a few people very high). | Column `skewness` in **`univariate_statistics.csv`**. |
+| **Kurtosis (excess in pandas)** | Tells you about **extreme tails** vs a bell curve. **Big** = more **extreme** values. | Column `kurtosis_excess` in **`univariate_statistics.csv`**. |
+| **Outlier detection (IQR)** | A **rule:** flag below **Q1 − 1.5×IQR** or above **Q3 + 1.5×IQR**. | **`outlier_detection_iqr.csv`**. |
+| **Hypothesis testing (Welch t-test)** | Asks: is the **average (mean)** of a feature **different** between people with **1** vs **0** on the target, more than you’d expect from random luck? **p-value** small (often **&lt; 0.05**) = strong evidence of a **mean** difference. | **`hypothesis_testing_results.csv`**. (Does not catch **all** **non-mean** patterns; decile charts can still show **risk** without a mean gap.) |
+
+---
+
+## Part 5 — Figures (`outputs/figures/`)
+
+Each image answers a visual question. **What the data shows** in your current run (see CSVs) is summarized under each.
 
 ### `01_target_distribution.png`
 - **What it is:** Count of borrowers with target **0** vs **1** (bar chart).
@@ -33,7 +231,7 @@ Each image answers a visual question. **What the data shows** (from the same run
 
 ### `07_bivariate_boxplots_by_target.png`
 - **What it is:** **Boxplots** of key numeric variables **split** by **target** (0 = no distress, 1 = distress); some y-axes are capped and outliers may be hidden.
-- **What the data shows:** **Defaulters (1)** and **non-defaulters (0)** differ in **center and spread** on these variables. For example, t-tests (below) find **defaulters younger on average** and **higher** on delinquency counts. Income is **lower on average** in the distress group. Use the plot to **see** separation; use `hypothesis_testing_results.csv` to see which mean differences are **statistically** significant.
+- **What the data shows:** **Defaulters (1)** and **non-defaulters (0)** differ in **center and spread** on these variables. T-tests (below) find **defaulters younger on average** and **higher** on delinquency counts; **lower** mean income in distress. Use the plot to **see** separation; use `hypothesis_testing_results.csv` for which **mean** differences are **statistically** significant.
 
 ### `06_feature_importance_random_forest.png`
 - **What it is:** **Random forest** “importance” (how much each feature was used in tree splits, MDI).
@@ -41,56 +239,56 @@ Each image answers a visual question. **What the data shows** (from the same run
 
 ---
 
-## 2. Seven topics (what they mean + what *this* data shows)
+## Part 6 — Seven topics: what the numbers in *this* data show
 
-| Topic | Meaning (one line) | What we see in this project |
-|--------|-------------------|----------------------------|
-| **Univariate** | One number column summarized alone (no pairing yet). | File `univariate_statistics.csv`. Most borrowers have **0** in the 30/60/90 delinquency counts at Q1/median; **income** middle 50% is about **$3,903–$7,400**; **age** Q1/median/Q3 about **41 / 52 / 63** years. |
-| **Quartiles (Q1, median, Q3)** | Q1 = 25th percentile, **median** = 50th, Q3 = 75th. Half the data lies between Q1 and Q3 (**IQR = Q3 − Q1**). | Example — **MonthlyIncome** (after EDA imputation in the table): Q1 = **3903**, median = **5400**, Q3 = **7400**. That means: **half** of borrowers (the middle) earn between about **$3,903 and $7,400** (the IQR band). The **max** in the data is much larger than Q3, which is why the **mean** (6418) is a poor “typical” value compared to the **median** (5400). For **30–59 DPD**: Q1 = median = Q3 = **0** — the **typical** borrower has **no** such event; a minority drives all the risk signal. |
-| **Skewness** | Asymmetry of a histogram. Positive and large = long **right** tail (a few very large values). | **age** is nearly symmetric (skew **~0.19**). **Debt ratio** and **income** have **huge** positive skew (90+ and 120+): a small share of people have **extreme** values. That matches the histograms. |
-| **Kurtosis (excess)** | “Tail weight” vs a normal curve. **Large** positive = more extreme values / heavier tails. | **age** has kurtosis near **0** (mild tails). **Debt ratio / income** have **very large** kurtosis (thousands) — the data has **rare, extreme** magnitudes, not a tidy bell curve. |
-| **Bivariate** | Two variables together; here, **feature vs target** (0 vs 1). | Figures **04, 05, 07** and the heatmap **02**. Visually, risk drivers **separate** the two groups, especially delinquency and age. |
-| **Outlier detection (IQR rule)** | Flag values **below** Q1 − 1.5×IQR or **above** Q3 + 1.5×IQR. | File `outlier_detection_iqr.csv`. **Debt ratio** has the most flagged rows by this rule (**~20.9%** of all borrowers) — the ratio has a **huge** upper tail. **30–59 DPD** has **~16%** “outliers” mostly because the lower half is stuck at 0, so the fence is tight. **Age** has **almost no** IQR outliers (**&lt;0.04%**) — ages stay in a plausible band. |
-| **Hypothesis testing (Welch t-test)** | Tests if the **mean** of a feature differs between **target = 1** and **target = 0** (p-value small ⇒ strong evidence of a **mean** difference). | File `hypothesis_testing_results.csv`. **Significant (p &lt; 0.05)**: e.g. **age** (distress group **~6.8 years younger** on average), all three **delinquency** count fields (much higher means in the distress group), **lower** income, etc. **Not** significant (mean test): **revolving utilization** (p **~0.22**) — the **average** is not very different between groups with this rule, even though decile plots (figure 05) can still show risk by bucket (non-mean / nonlinear effects). |
+| Topic | What we see in this project (from your generated tables) |
+|--------|--------------------------------|
+| **Univariate** | `univariate_statistics.csv` — e.g. most people have **0** mild delinquency counts at median; **income** middle 50% about **$3,903–$7,400**; **age** quartiles about **41 / 52 / 63** years. |
+| **Quartiles** | e.g. **Income:** Q1 **3903**, median **5400**, Q3 **7400** — the “typical middle” is **not** the **mean** because a few very high incomes **pull the mean** up. **30–59 DPD:** Q1=median=Q3=**0** for most. |
+| **Skewness** | **Age** ≈ **0.19** (almost symmetric). **Debt / income** skews are **very large** (long right tails of extremes). |
+| **Kurtosis (excess)** | **Age** ≈ **0** (mild tails). **Debt / income** have **huge** kurtosis (many or extreme tail values). |
+| **Bivariate** | Plots **04, 05, 07** + heatmap **02**; visually **risk factors separate** 0 vs 1. |
+| **Outliers (IQR)** | `outlier_detection_iqr.csv` — e.g. **debt ratio** **~21%** of rows flagged; **age** **&lt;0.04%**; delinquency counts at **0** make IQR **fences odd** (many “outliers” are not errors). |
+| **Hypothesis tests** | `hypothesis_testing_results.csv` — **age**, all **delinquency** fields, **income**, etc. **p &lt; 0.05**; **revolving utilization** not significant on **means** (p **~0.22**), though deciles (figure 05) can still show **risk** by **bucket**. |
 
-Re-run the script to refresh all numbers; small changes in metrics are normal.
+*Re-run the script to refresh numbers; small changes in model metrics are normal.*
 
 ---
 
-## 3. Output files (CSVs and summary text)
+## Part 7 — Output files (CSVs and summary text)
 
 ### `data_quality_table.csv`
 - **What it is:** One row per column: `dtype`, `non_null`, `missing_count`, **`missing_pct`**, `n_unique`, and for numerics `min`/`max`.
-- **What the data shows:** **Monthly income** is missing in **~19.8%** of raw rows; **NumberOfDependents** in **~2.6%**. No other column uses the literal `NA` at that scale. That is important for any story about “income is unknown for many applicants.”
+- **What the data shows:** **Income** ~**19.8%** missing; **dependents** ~**2.6%** in raw `NA` cells.
 
 ### `univariate_statistics.csv`
-- **What it is:** For each **numeric** feature: `count`, `mean`, `std`, `min`, **`q1`**, **`median_q2`**, **`q3`**, `max`, **`iqr`**, **`skewness`**, **`kurtosis_excess`**.
-- **What the data shows (how to read one row):** e.g. **age** — mean **52.3** years, IQR **22** (from 41 to 63) → wide middle 50% around mid-life. e.g. **Revolving utilization** — median **~0.15** (15% of limit used) but max **fifty thousands**-scale in raw numbers → **median** is the right “typical” story, not the mean. **Quartile columns** are the concrete **splitting points** of the sorted data (not a model output).
+- **What it is:** Per numeric feature: `mean`, `std`, `min`, **`q1`**, **`median_q2`**, **`q3`**, `max`, `iqr`, **`skewness`**, **`kurtosis_excess`**.
+- **What the data shows:** The **quartile columns** are the **real cut points** in the data after sorting. Compare **mean vs median** to see **tail** effects (debt, income, utilization).
 
 ### `outlier_detection_iqr.csv`
-- **What it is:** For each feature, **lower/upper IQR fence**, `outlier_count`, **`outlier_pct_of_rows`**.
-- **What the data shows:** Which fields are “extreme” under a **rule-based** definition. High **%** for **debt** and **delinquency** reflects **real heavy tails and zeros**, not only errors.
+- **What it is:** IQR **fences**, outlier **counts** and **% of rows** per feature.
+- **What the data shows:** Which fields are “extreme” by the **1.5×IQR** rule; high % often means **real tail risk** or many **zeros** on count variables, not only typos.
 
 ### `hypothesis_testing_results.csv`
-- **What it is:** `mean_target_1`, `mean_target_0`, `mean_diff_1_minus_0`, `t_statistic`, `p_value`, `significant_at_0_05`.
-- **What the data shows:** A ranked list of which variables have **statistically different means** between the **distress** and **non-distress** groups. Use for report language like: on average, distressed borrowers are younger and show more past delinquency.
+- **What it is:** Mean in **target=1** vs **target=0**, **difference**, **p-value**, **significant** flag.
+- **What the data shows:** Which **average** feature levels **differ** by distress status at usual significance levels.
 
 ### `eda_summary.txt`
-- **What it is:** Short run log: N rows, default %, **missing** lines, model **ROC-AUC** and **accuracy**, a **few** lines from univariate / outliers / hypothesis blocks.
-- **What the data shows:** A **one-page** snapshot; open the **CSV** files for full detail.
+- **What it is:** Short **narrative** snapshot: N rows, default %, **missing** lines, **model** ROC-AUC / accuracy, top lines from the statistics blocks.
+- **What the data shows:** A **one-page** paste for your **write-up**; use **CSVs** for the full table.
 
 ### Figures
-- All discussion above — section **1**.
+- All discussion under **Part 5**.
 
 ---
 
-## 4. Baseline models (numbers from last `eda_summary.txt` run)
+## Part 8 — Baseline models (illustrative; re-run to refresh)
 
-- **Logistic regression** — ROC-AUC **~0.85**, accuracy **~0.79** (illustrative; re-run to refresh).  
-- **Random forest** — ROC-AUC **~0.86**, accuracy **~0.85**.  
+- **Logistic regression** — example order of ROC-AUC in high **0.8**s; accuracy in high **0.7**s–**0.8**s.  
+- **Random forest** — example ROC-AUC a bit **higher**; accuracy in **0.8**s.  
 
-**Why mention them:** they show the **patterns in sections 1–3** are not only visual; a standard learner can use them to rank risk on a held-out 25% test split.
+Exact numbers: open **`outputs/eda_summary.txt`** after you run the script. They show the **same patterns** in Parts 5–7 are not only for pictures; a standard model can **use** them to **rank** risk on held-out data.
 
 ---
 
-*Re-run `python eda_credit_scoring.py` before a presentation to align figures, tables, and `eda_summary.txt` to one fresh run.*
+*Re-run `python eda_credit_scoring.py` before a grade or presentation so figures, `eda_summary.txt`, and CSVs match one run.*
