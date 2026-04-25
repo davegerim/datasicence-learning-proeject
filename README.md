@@ -191,17 +191,17 @@ These use **`scipy`** in `requirements.txt` for the **t-test**.
 | **Confusion matrix** | **2×2** table: true negatives, false positives, false negatives, true positives — which **kinds of mistakes** happen. |
 | **Feature importance (Random Forest)** | A **rank** of which inputs drove **splits** most. Good for **discussion**; not automatic **regulatory** proof. |
 
-### Glossary: the seven “statistics / EDA” topics (beginner + where in this project)
+### Combined table: seven “statistics / EDA” topics
 
-| Topic | In plain language | In this project |
-|--------|-------------------|-----------------|
-| **Univariate** | You study **one** column at a time (typical value, spread, **shape**). | **`univariate_statistics.csv`** and histograms in **`03_*.png`**. |
-| **Bivariate** | You study **two** things: here **one feature** vs the **target (0/1)**. | **Boxplots** in `07_bivariate_boxplots_by_target.png` and default-rate lines in `04_delinquency_vs_default_rate.png` and `05_utilization_deciles_default_rate.png`. |
-| **Quartiles (Q1, median, Q3)** | If you **sort** all values: **Q1** = 25% are below, **median** = middle, **Q3** = 75% are below. The **IQR = Q3 − Q1** is the “middle 50%” range. | Columns `q1`, `median_q2`, `q3` in **`univariate_statistics.csv`**. |
-| **Skewness** | Tells you if a histogram is **lopsided**. **Large positive** = a **long tail** toward **high** values (a few people very high). | Column `skewness` in **`univariate_statistics.csv`**. |
-| **Kurtosis (excess in pandas)** | Tells you about **extreme tails** vs a bell curve. **Big** = more **extreme** values. | Column `kurtosis_excess` in **`univariate_statistics.csv`**. |
-| **Outlier detection (IQR)** | A **rule:** flag below **Q1 − 1.5×IQR** or above **Q3 + 1.5×IQR**. | **`outlier_detection_iqr.csv`**. |
-| **Hypothesis testing (Welch t-test)** | Asks: is the **average (mean)** of a feature **different** between people with **1** vs **0** on the target, more than you’d expect from random luck? **p-value** small (often **&lt; 0.05**) = strong evidence of a **mean** difference. | **`hypothesis_testing_results.csv`**. (Does not catch **all** **non-mean** patterns; decile charts can still show **risk** without a mean gap.) |
+| Topic | In plain language | In this project | What this data shows |
+|--------|-------------------|-----------------|----------------------|
+| **Univariate** | You study **one** column at a time (typical value, spread, **shape**). | `univariate_statistics.csv` and histograms in `03_key_distributions.png`. | Most borrowers have **0** in mild delinquency at median; income middle 50% is about **$3,903–$7,400**; age quartiles are about **41 / 52 / 63** years. |
+| **Bivariate** | You study **two** things: here **one feature** vs the **target (0/1)**. | Boxplots in `07_bivariate_boxplots_by_target.png` and default-rate lines in `04_delinquency_vs_default_rate.png` and `05_utilization_deciles_default_rate.png`. | Risk factors visually separate **0 vs 1** groups; worse delinquency/utilization regions align with higher distress. |
+| **Quartiles (Q1, median, Q3)** | If you **sort** all values: **Q1** = 25% are below, **median** = middle, **Q3** = 75% are below. **IQR = Q3 − Q1** is the middle 50% range. | Columns `q1`, `median_q2`, `q3` in `univariate_statistics.csv`. | Income: **Q1 3903, median 5400, Q3 7400**. For `30-59 DPD`, Q1=median=Q3=**0**, so most borrowers are at zero and a minority drives tail risk. |
+| **Skewness** | Tells you if a histogram is **lopsided**. Large positive = long tail toward high values. | Column `skewness` in `univariate_statistics.csv`. | `age` ≈ **0.19** (near symmetric). Debt/income-related fields have **very large** positive skew (long right tails). |
+| **Kurtosis (excess in pandas)** | Tells you about **extreme tails** vs a bell curve. Big = more extreme values. | Column `kurtosis_excess` in `univariate_statistics.csv`. | `age` is near **0** (mild tails). Debt/income fields have **huge** kurtosis, showing extreme tail values. |
+| **Outlier detection (IQR)** | Rule: flag below **Q1 − 1.5×IQR** or above **Q3 + 1.5×IQR**. | `outlier_detection_iqr.csv`. | Debt ratio has about **~21%** rows flagged; age is **<0.04%**. Delinquency counts with many zeros produce tight fences, so many flagged points are not necessarily data errors. |
+| **Hypothesis testing (Welch t-test)** | Tests if the **mean** differs between target **1** and **0** more than random chance; small p-value (often <0.05) indicates strong evidence of a mean difference. | `hypothesis_testing_results.csv`. | `age`, delinquency fields, and income are significant (**p < 0.05**). Revolving utilization is not significant on **mean difference** (**p ~ 0.22**), even though decile plots can still show risk patterns. |
 
 ---
 
@@ -239,23 +239,7 @@ Each image answers a visual question. **What the data shows** in your current ru
 
 ---
 
-## Part 6 — Seven topics: what the numbers in *this* data show
-
-| Topic | What we see in this project (from your generated tables) |
-|--------|--------------------------------|
-| **Univariate** | `univariate_statistics.csv` — e.g. most people have **0** mild delinquency counts at median; **income** middle 50% about **$3,903–$7,400**; **age** quartiles about **41 / 52 / 63** years. |
-| **Quartiles** | e.g. **Income:** Q1 **3903**, median **5400**, Q3 **7400** — the “typical middle” is **not** the **mean** because a few very high incomes **pull the mean** up. **30–59 DPD:** Q1=median=Q3=**0** for most. |
-| **Skewness** | **Age** ≈ **0.19** (almost symmetric). **Debt / income** skews are **very large** (long right tails of extremes). |
-| **Kurtosis (excess)** | **Age** ≈ **0** (mild tails). **Debt / income** have **huge** kurtosis (many or extreme tail values). |
-| **Bivariate** | Plots **04, 05, 07** + heatmap **02**; visually **risk factors separate** 0 vs 1. |
-| **Outliers (IQR)** | `outlier_detection_iqr.csv` — e.g. **debt ratio** **~21%** of rows flagged; **age** **&lt;0.04%**; delinquency counts at **0** make IQR **fences odd** (many “outliers” are not errors). |
-| **Hypothesis tests** | `hypothesis_testing_results.csv` — **age**, all **delinquency** fields, **income**, etc. **p &lt; 0.05**; **revolving utilization** not significant on **means** (p **~0.22**), though deciles (figure 05) can still show **risk** by **bucket**. |
-
-*Re-run the script to refresh numbers; small changes in model metrics are normal.*
-
----
-
-## Part 7 — Output files (CSVs and summary text)
+## Part 6 — Output files (CSVs and summary text)
 
 ### `data_quality_table.csv`
 - **What it is:** One row per column: `dtype`, `non_null`, `missing_count`, **`missing_pct`**, `n_unique`, and for numerics `min`/`max`.
@@ -282,7 +266,7 @@ Each image answers a visual question. **What the data shows** in your current ru
 
 ---
 
-## Part 8 — Baseline models (illustrative; re-run to refresh)
+## Part 7 — Baseline models (illustrative; re-run to refresh)
 
 - **Logistic regression** — example order of ROC-AUC in high **0.8**s; accuracy in high **0.7**s–**0.8**s.  
 - **Random forest** — example ROC-AUC a bit **higher**; accuracy in **0.8**s.  
