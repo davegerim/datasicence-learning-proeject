@@ -220,6 +220,25 @@ Each image answers a visual question. **What the data shows** in your current ru
 ### `03_key_distributions.png`
 - **What it is:** **Histograms** of utilization, age, debt ratio, and monthly income (for income/utilization/debt, very high values are **capped** in the plot so the graph is readable).
 - **What the data shows:** **Age** is roughly **bell-shaped** (typical working-age borrowers). **Utilization, debt ratio, and income** are **heavily right-skewed** — most values sit in a moderate range, and a long tail of **extreme** values pulls means far above the median (see the univariate file for that).
+- **Revolving Utilization (Top-Left, Blue):**
+  - **What it measures:** The ratio of a person's total balance on credit cards and personal lines of credit to their total credit limit.
+  - **Observation:** This is highly skewed to the left. The vast majority of individuals use very little of their available credit (close to 0.0). However, there is a notable spike right at 1.0, representing people who have maxed out their credit lines.
+- **2. Age (Top-Right, Teal):**
+  - **What it measures:** The age of the individuals in years.
+  - **Observation:** This follows a roughly normal (bell-shaped) distribution, though it is slightly \"jagged.\" The bulk of the population in this dataset is between 35 and 65 years old, with the peak frequency occurring around age 50.
+  - **EDA Note:** It shows a sensible range for credit applicants, starting around age 21 and trailing off after age 80.
+- **3. Debt Ratio (Bottom-Left, Orange):**
+  - **What it measures:** Monthly debt payments divided by gross monthly income.
+  - **Observation:** This is extremely skewed. Almost the entire dataset has a debt ratio very close to 0. Because of the \"cap at 99.5th pct,\" we can see a tiny sliver of data points extending all the way out to 6000+, which likely represents extreme outliers or perhaps errors in the raw data.
+  - **EDA Note:** In credit modeling, an extremely high debt ratio is usually a strong indicator of high risk.
+- **4. Monthly Income (Bottom-Right, Purple):**
+  - **What it measures:** The monthly income of the individual.
+  - **Observation:** There is a general distribution peaking around 5,000, but there is a massive, sharp spike right around the 5,000–6,000 mark.
+  - **EDA Note:** The title mentions \"imputed.\" This huge spike suggests that many individuals had missing income data, and the data scientist \"imputed\" (filled in) those missing values using a single value, likely the median or mean income of the group.
+- **Summary for Credit Risk:**
+  - In the context of the \"Target Distribution\" and \"Delinquency charts\" mentioned in your text:
+    - **Utilization and Debt Ratio:** Higher values in these two charts generally correlate with a higher \"bad\" outcome rate (1s).
+    - **Age and Income:** These are often used as stabilizing factors; for example, older individuals or those with higher steady incomes might be statistically less likely to default.
 
 ### `04_delinquency_vs_default_rate.png`
 - **What it is:** For each integer count of past-due events (30–59, 60–89, 90+ days, **x** capped for display), the **default rate** = share of `SeriousDlqin2yrs = 1` in that group.
