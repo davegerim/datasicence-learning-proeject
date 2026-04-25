@@ -251,6 +251,56 @@ Each image answers a visual question. **What the data shows** in your current ru
 ### `07_bivariate_boxplots_by_target.png`
 - **What it is:** **Boxplots** of key numeric variables **split** by **target** (0 = no distress, 1 = distress); some y-axes are capped and outliers may be hidden.
 - **What the data shows:** **Defaulters (1)** and **non-defaulters (0)** differ in **center and spread** on these variables. T-tests (below) find **defaulters younger on average** and **higher** on delinquency counts; **lower** mean income in distress. Use the plot to **see** separation; use `hypothesis_testing_results.csv` for which **mean** differences are **statistically** significant.
+- **First: What you are looking at**
+  - Each chart compares two groups of people:
+    - Target = 0 -> No distress (good customers)
+    - Target = 1 -> Distress (customers likely to default)
+  - Each box plot shows how a variable is distributed in those two groups.
+- **Quick refresher: How to read a box plot**
+  - Each box shows:
+    - Middle line -> median (the "typical" value)
+    - Box -> where most data lies (middle 50%)
+    - Whiskers -> range (min to max, roughly)
+    - If box is higher -> values are generally higher
+- **1. Utilization by target (TOP LEFT)**
+  - This is credit utilization (how much of your credit you are using).
+  - What we see:
+    - Target = 0 (good users): low median (~0.1), most values are small.
+    - Target = 1 (distressed users): much higher median (~0.85), many people use a lot of their credit.
+  - Meaning:
+    - People who use too much of their credit are more likely to be in financial trouble.
+  - Simple example:
+    - Using 10% of credit -> safer
+    - Using 90% of credit -> riskier
+- **2. Debt ratio by target (TOP RIGHT)**
+  - Debt ratio = how much debt you have compared to income.
+  - What we see:
+    - Both groups look somewhat similar.
+    - Distressed group (1) has a slightly higher median and wider spread (more extreme values).
+  - Meaning:
+    - Debt ratio matters, but it is not as strong a predictor as utilization in this view.
+- **3. Monthly income by target (BOTTOM LEFT)**
+  - What we see:
+    - Target = 0 (good users): slightly higher median income and wider range.
+    - Target = 1 (distressed users): slightly lower median income.
+  - Meaning:
+    - Lower income is linked to distress, but not always; some high-income people also default.
+- **4. 90+ days late count (BOTTOM RIGHT)**
+  - This is very important.
+  - What we see:
+    - Target = 0: almost always 0 (no serious late payments).
+    - Target = 1: many have 1 or more late payments; some go higher.
+  - Meaning:
+    - If someone is 90+ days late, they are much more likely to default.
+    - This is one of the strongest signals in the dataset.
+- **Final Summary**
+  - Strong predictors of default:
+    - High credit utilization
+    - History of 90+ days late
+  - Medium predictor:
+    - Debt ratio
+  - Weak/moderate predictor:
+    - Income
 
 ### `06_feature_importance_random_forest.png`
 - **What it is:** **Random forest** “importance” (how much each feature was used in tree splits, MDI).
