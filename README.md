@@ -94,6 +94,43 @@ Here is what each part of the brief usually means (wording in your PDF may diffe
 
 ## Part 3 — What the implementation does (simple steps)
 
+### Data cleaning phase (before EDA)
+
+- **Step 1: Parse missing values correctly at load time**
+  - The CSV uses the text **`NA`** for missing entries.
+  - We convert those to true missing values (`NaN`) when reading the file.
+  - Why this matters: if `NA` stays as plain text, summary stats and models become misleading.
+
+- **Step 2: Rename raw ID column for clarity**
+  - `Unnamed: 0` is renamed to **`borrower_id`**.
+  - Why this matters: cleaner reporting and no confusion during plotting/modeling.
+
+- **Step 3: Build a data quality table**
+  - We generate `outputs/data_quality_table.csv` with:
+    - data type per column
+    - non-null count
+    - missing count / missing percent
+    - unique value count
+    - min/max for numeric columns
+  - Why this matters: this is the first validation checkpoint before EDA.
+
+- **Step 4: Prepare a clean EDA copy (`df_eda`)**
+  - We keep the raw dataframe and create a separate EDA dataframe.
+  - In `df_eda`, missing values in:
+    - `MonthlyIncome`
+    - `NumberOfDependents`
+    are filled with the **median**.
+  - Why this matters: EDA plots and statistical summaries stay complete and stable.
+
+- **Step 5: Keep cleaning separate from modeling**
+  - For modeling, we do **not** manually overwrite raw training data.
+  - The model pipelines perform their own median imputation inside sklearn.
+  - Why this matters: cleaner train/test workflow and less leakage risk.
+
+- **Step 6: Control extreme tails for visualization only**
+  - For selected charts, we cap very high values at the 99.5th percentile.
+  - Why this matters: histograms stay readable without changing the raw data used for model training.
+
 ### Load the CSV
 
 - The file uses the text **`NA`** for some missing values. The code tells **pandas** to read those as **empty** (NaN) so **math and counts** are correct.
